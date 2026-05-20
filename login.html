@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول - نظام إدارة المالية زد</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1e429f;
+    --primary-light: #ebf0ff;
+    --success: #0e9f6e;
+    --danger: #f05252;
+    --dark: #111928;
+    --gray: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f0f4ff;
+    --card-bg: #ffffff;
+    --sidebar-bg: #1e2a3a;
+    --radius: 14px;
+    --shadow-lg: 0 20px 60px rgba(26,86,219,0.12), 0 4px 16px rgba(0,0,0,0.08);
+    --transition: 0.25s ease;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* خلفية متحركة */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(26,86,219,0.08) 0%, transparent 70%);
+    animation: float 8s ease-in-out infinite;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -30%;
+    left: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(14,159,110,0.06) 0%, transparent 70%);
+    animation: float 10s ease-in-out infinite reverse;
+    z-index: 0;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-30px) scale(1.05); }
+  }
+
+  .page-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 440px;
+    padding: 16px;
+  }
+
+  /* الشعار */
+  .brand {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .brand-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--sidebar-bg);
+    box-shadow: 0 8px 24px rgba(30,42,58,0.25);
+    overflow: hidden;
+  }
+  .brand-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .brand-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--sidebar-bg);
+    letter-spacing: -0.5px;
+  }
+  .brand-sub {
+    font-size: 13px;
+    color: var(--gray);
+    margin-top: 2px;
+  }
+
+  /* البطاقة الرئيسية */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.8);
+  }
+
+  /* تبويبات */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: #fafbff;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 16px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--gray);
+    transition: all var(--transition);
+    position: relative;
+    font-family: inherit;
+  }
+  .tab-btn.active {
+    color: var(--primary);
+    background: var(--card-bg);
+  }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 2px 2px 0 0;
+  }
+  .tab-btn:hover:not(.active) {
+    color: var(--dark);
+    background: rgba(0,0,0,0.02);
+  }
+
+  /* المحتوى */
+  .tab-content { display: none; padding: 28px; }
+  .tab-content.active { display: block; }
+
+  /* العنوان */
+  .form-title { font-size: 18px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
+  .form-subtitle { font-size: 13px; color: var(--gray); margin-bottom: 24px; }
+
+  /* الحقول */
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 6px;
+  }
+  .form-label span { color: var(--danger); margin-right: 2px; }
+
+  .input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .input-icon {
+    position: absolute;
+    right: 12px;
+    font-size: 17px;
+    color: var(--gray);
+    pointer-events: none;
+    transition: color var(--transition);
+  }
+  .form-input {
+    width: 100%;
+    padding: 11px 40px 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--dark);
+    background: #fafbff;
+    transition: all var(--transition);
+    font-family: inherit;
+    outline: none;
+  }
+  .form-input:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(26,86,219,0.08);
+  }
+  .form-input:focus + .input-icon { color: var(--primary); }
+  .form-input.error { border-color: var(--danger); }
+  .form-input.error:focus { box-shadow: 0 0 0 3px rgba(240,82,82,0.1); }
+
+  /* زر إظهار كلمة المرور */
+  .toggle-pass {
+    position: absolute;
+    left: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 17px;
+    color: var(--gray);
+    padding: 0;
+    transition: color var(--transition);
+  }
+  .toggle-pass:hover { color: var(--primary); }
+
+  /* رسالة الخطأ */
+  .field-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 5px;
+    display: none;
+  }
+  .field-error.show { display: block; }
+
+  /* مؤشر قوة كلمة المرور */
+  .password-strength {
+    margin-top: 8px;
+    display: none;
+  }
+  .password-strength.show { display: block; }
+  .strength-bar-wrap {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .strength-bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background var(--transition);
+  }
+  .strength-label { font-size: 11px; color: var(--gray); }
+
+  /* تذكرني */
+  .remember-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--dark);
+    user-select: none;
+  }
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .forgot-link {
+    font-size: 13px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .forgot-link:hover { text-decoration: underline; }
+
+  /* زر الإرسال */
+  .submit-btn {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(26,86,219,0.3);
+  }
+  .submit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(26,86,219,0.4);
+  }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .submit-btn.loading .btn-spinner { display: block; }
+  .submit-btn.loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* رسالة التنبيه */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 18px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .alert.show { display: flex; }
+  .alert-danger { background: #fff5f5; border: 1px solid #fed7d7; color: #c53030; }
+  .alert-success { background: #f0fff4; border: 1px solid #c6f6d5; color: #276749; }
+
+  /* فاصل */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+    color: var(--gray);
+    font-size: 12px;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* الشروط */
+  .terms-text {
+    font-size: 12px;
+    color: var(--gray);
+    text-align: center;
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+  .terms-text a { color: var(--primary); text-decoration: none; }
+  .terms-text a:hover { text-decoration: underline; }
+
+  /* معلومات الحساب التجريبي */
+  .demo-hint {
+    margin-top: 20px;
+    padding: 12px 16px;
+    background: #f8f9ff;
+    border: 1px dashed #c3d1f5;
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: var(--gray);
+    text-align: center;
+    line-height: 1.7;
+  }
+  .demo-hint strong { color: var(--primary); font-weight: 600; }
+
+  /* التذييل */
+  .footer-note {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--gray);
+  }
+  .footer-note span { color: var(--primary); }
+
+  /* نجاح التسجيل */
+  .success-screen {
+    padding: 40px 28px;
+    text-align: center;
+    display: none;
+  }
+  .success-screen.show { display: block; }
+  .success-icon {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, #0e9f6e, #065f46);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 32px;
+    box-shadow: 0 8px 24px rgba(14,159,110,0.25);
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .success-title { font-size: 20px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+  .success-msg { font-size: 14px; color: var(--gray); margin-bottom: 24px; }
+  .success-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 4px 15px rgba(26,86,219,0.3);
+    transition: all var(--transition);
+  }
+  .success-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,86,219,0.4); }
+
+  /* توافق الشاشات الصغيرة */
+  @media (max-width: 480px) {
+    .tab-content { padding: 20px 16px; }
+    .brand-name { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <!-- الشعار -->
+  <div class="brand">
+    <div class="brand-logo">
+      <img src="img/ZD.png" alt="ZD" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'font-size:28px;font-weight:900;color:#fff\'>زد</span>'">
+    </div>
+    <div class="brand-name">نظام إدارة المالية</div>
+    <div class="brand-sub">منصة زد للتحكم في ميزانيتك بسهولة</div>
+  </div>
+
+  <!-- البطاقة -->
+  <div class="card">
+
+    <!-- التبويبات -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('login')">تسجيل الدخول</button>
+      <button class="tab-btn" onclick="switchTab('register')">إنشاء حساب</button>
+    </div>
+
+    <!-- ===== تسجيل الدخول ===== -->
+    <div id="tab-login" class="tab-content active">
+      <div class="form-title">مرحباً بعودتك 👋</div>
+      <div class="form-subtitle">سجّل دخولك للوصول إلى لوحة التحكم</div>
+
+      <div id="login-alert" class="alert alert-danger">
+        <span>⚠️</span>
+        <span id="login-alert-msg"></span>
+      </div>
+
+      <form id="login-form" onsubmit="handleLogin(event)" novalidate>
+
+        <div class="form-group">
+          <label class="form-label" for="login-email">البريد الإلكتروني <span>*</span></label>
+          <div class="input-wrap">
+            <input type="email" id="login-email" class="form-input" placeholder="example@email.com" autocomplete="email" dir="ltr">
+            <span class="input-icon">✉️</span>
+          </div>
+          <div class="field-error" id="login-email-err">يرجى إدخال بريد إلكتروني صحيح</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-pass">كلمة المرور <span>*</span></label>
+          <div class="input-wrap">
+            <input type="password" id="login-pass" class="form-input" placeholder="••••••••" autocomplete="current-password" dir="ltr">
+            <span class="input-icon">🔒</span>
+            <button type="button" class="toggle-pass" onclick="togglePassword('login-pass', this)" aria-label="إظهار كلمة المرور">👁️</button>
+          </div>
+          <div class="field-error" id="login-pass-err">يرجى إدخال كلمة المرور</div>
+        </div>
+
+        <div class="remember-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="remember-me">
+            تذكرني
+          </label>
+          <span class="forgot-link" onclick="showForgot()">نسيت كلمة المرور؟</span>
+        </div>
+
+        <button type="submit" class="submit-btn" id="login-btn">
+          <div class="btn-spinner"></div>
+          <span class="btn-text">دخول إلى الحساب</span>
+        </button>
+
+      </form>
+
+      <div class="demo-hint">
+        ليس لديك حساب؟ اضغط على <strong>"إنشاء حساب"</strong> أعلاه للتسجيل مجاناً
+      </div>
+    </div>
+
+    <!-- ===== إنشاء حساب ===== -->
+    <div id="tab-register" class="tab-content">
+
+      <!-- نموذج التسجيل -->
+      <div id="register-form-wrap">
+        <div class="form-title">إنشاء حساب جديد ✨</div>
+        <div class="form-subtitle">انضم الآن وابدأ إدارة ميزانيتك بذكاء</div>
+
+        <div id="register-alert" class="alert alert-danger">
+          <span>⚠️</span>
+          <span id="register-alert-msg"></span>
+        </div>
+
+        <form id="register-form" onsubmit="handleRegister(event)" novalidate>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-name">الاسم الكامل <span>*</span></label>
+            <div class="input-wrap">
+              <input type="text" id="reg-name" class="form-input" placeholder="أدخل اسمك الكامل" autocomplete="name">
+              <span class="input-icon">👤</span>
+            </div>
+            <div class="field-error" id="reg-name-err">الاسم يجب أن يكون حرفين على الأقل</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-email">البريد الإلكتروني <span>*</span></label>
+            <div class="input-wrap">
+              <input type="email" id="reg-email" class="form-input" placeholder="example@email.com" autocomplete="email" dir="ltr">
+              <span class="input-icon">✉️</span>
+            </div>
+            <div class="field-error" id="reg-email-err">يرجى إدخال بريد إلكتروني صحيح</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-pass">كلمة المرور <span>*</span></label>
+            <div class="input-wrap">
+              <input type="password" id="reg-pass" class="form-input" placeholder="••••••••" oninput="checkStrength(this.value)" autocomplete="new-password" dir="ltr">
+              <span class="input-icon">🔑</span>
+              <button type="button" class="toggle-pass" onclick="togglePassword('reg-pass', this)" aria-label="إظهار كلمة المرور">👁️</button>
+            </div>
+            <div class="field-error" id="reg-pass-err">كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل</div>
+            <div class="password-strength" id="strength-wrap">
+              <div class="strength-bar-wrap">
+                <div class="strength-bar" id="sb1"></div>
+                <div class="strength-bar" id="sb2"></div>
+                <div class="strength-bar" id="sb3"></div>
+                <div class="strength-bar" id="sb4"></div>
+              </div>
+              <div class="strength-label" id="strength-label"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-confirm">تأكيد كلمة المرور <span>*</span></label>
+            <div class="input-wrap">
+              <input type="password" id="reg-confirm" class="form-input" placeholder="••••••••" autocomplete="new-password" dir="ltr">
+              <span class="input-icon">🔑</span>
+              <button type="button" class="toggle-pass" onclick="togglePassword('reg-confirm', this)" aria-label="إظهار كلمة المرور">👁️</button>
+            </div>
+            <div class="field-error" id="reg-confirm-err">كلمات المرور غير متطابقة</div>
+          </div>
+
+          <button type="submit" class="submit-btn" id="reg-btn">
+            <div class="btn-spinner"></div>
+            <span class="btn-text">إنشاء الحساب</span>
+          </button>
+
+          <div class="terms-text">
+            بالتسجيل، أنت توافق على
+            <a href="#">شروط الاستخدام</a> و<a href="#">سياسة الخصوصية</a>
+          </div>
+
+        </form>
+      </div>
+
+      <!-- شاشة النجاح -->
+      <div class="success-screen" id="success-screen">
+        <div class="success-icon">✅</div>
+        <div class="success-title">تم إنشاء حسابك!</div>
+        <div class="success-msg" id="success-msg-text">مرحباً! حسابك جاهز الآن. انتقل إلى لوحة التحكم.</div>
+        <button class="success-btn" onclick="goToDashboard()">
+          <span>🚀</span> الانتقال للوحة التحكم
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- التذييل -->
+  <div class="footer-note">
+    &copy; 2025 <span>نظام إدارة المالية زد</span> &mdash; جميع الحقوق محفوظة
+  </div>
+
+</div>
+
+<script>
+  // ===== Firebase =====
+  const firebaseConfig = {
+    apiKey:            "AIzaSyAlojOcGBX0GdzIYtK7CMkWIPXFOQzxu-Q",
+    authDomain:        "zd2-finance.firebaseapp.com",
+    projectId:         "zd2-finance",
+    storageBucket:     "zd2-finance.firebasestorage.app",
+    messagingSenderId: "182310499307",
+    appId:             "1:182310499307:web:61ab9f2f24229b5220dfae"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  // إعادة التوجيه إذا كان مسجلاً مسبقاً
+  auth.onAuthStateChanged(user => {
+    if (user) window.location.replace('index.html');
+  });
+
+
+  // ===== التبويبات =====
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) =>
+      b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register')));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    clearAlerts();
+  }
+
+  // ===== إظهار/إخفاء كلمة المرور =====
+  function togglePassword(id, btn) {
+    const inp = document.getElementById(id);
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁️';
+  }
+
+  // ===== تحقق من الحقول =====
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  }
+  function validatePassword(pass) {
+    return pass.length >= 8;
+  }
+  function sanitize(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  }
+
+  function showFieldError(id, show) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('show', show);
+    const inputId = id.replace('-err','');
+    const inp = document.getElementById(inputId);
+    if (inp) inp.classList.toggle('error', show);
+  }
+
+  // ===== قوة كلمة المرور =====
+  function checkStrength(pass) {
+    const wrap = document.getElementById('strength-wrap');
+    wrap.classList.toggle('show', pass.length > 0);
+    if (!pass) return;
+
+    let score = 0;
+    if (pass.length >= 8)  score++;
+    if (/[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^A-Za-z0-9]/.test(pass)) score++;
+
+    const colors = ['#f05252','#e3a008','#3b82f6','#0e9f6e'];
+    const labels = ['ضعيفة جداً','متوسطة','جيدة','قوية جداً ✓'];
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('sb'+i).style.background = i <= score ? colors[score-1] : 'var(--border)';
+    }
+    const lbl = document.getElementById('strength-label');
+    lbl.textContent = labels[score-1] || '';
+    lbl.style.color = colors[score-1] || 'var(--gray)';
+  }
+
+  // ===== تسجيل الدخول =====
+  async function handleLogin(e) {
+    e.preventDefault();
+    clearAlerts();
+
+    const email    = document.getElementById('login-email').value.trim();
+    const pass     = document.getElementById('login-pass').value;
+    const remember = document.getElementById('remember-me').checked;
+
+    let valid = true;
+    if (!validateEmail(email)) { showFieldError('login-email-err', true); valid = false; }
+    if (!pass)                 { showFieldError('login-pass-err',  true); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('login-btn');
+    btn.classList.add('loading'); btn.disabled = true;
+
+    try {
+      const persistence = remember
+        ? firebase.auth.Auth.Persistence.LOCAL
+        : firebase.auth.Auth.Persistence.SESSION;
+      await auth.setPersistence(persistence);
+      await auth.signInWithEmailAndPassword(email, pass);
+      window.location.replace('index.html');
+    } catch(err) {
+      btn.classList.remove('loading'); btn.disabled = false;
+      showAlert('login', getFirebaseError(err.code));
+    }
+  }
+
+  // ===== إنشاء حساب =====
+  async function handleRegister(e) {
+    e.preventDefault();
+    clearAlerts();
+
+    const name    = document.getElementById('reg-name').value.trim();
+    const email   = document.getElementById('reg-email').value.trim();
+    const pass    = document.getElementById('reg-pass').value;
+    const confirm = document.getElementById('reg-confirm').value;
+
+    let valid = true;
+    if (name.length < 2)         { showFieldError('reg-name-err',    true); valid = false; }
+    if (!validateEmail(email))   { showFieldError('reg-email-err',   true); valid = false; }
+    if (!validatePassword(pass)) { showFieldError('reg-pass-err',    true); valid = false; }
+    if (pass !== confirm)        { showFieldError('reg-confirm-err', true); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('reg-btn');
+    btn.classList.add('loading'); btn.disabled = true;
+
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      await cred.user.updateProfile({ displayName: sanitize(name) });
+
+      document.getElementById('register-form-wrap').style.display = 'none';
+      const sc = document.getElementById('success-screen');
+      sc.classList.add('show');
+      document.getElementById('success-msg-text').textContent =
+        `مرحباً ${sanitize(name)}! حسابك جاهز. سيتم تسجيل دخولك تلقائياً.`;
+
+      setTimeout(() => window.location.replace('index.html'), 2000);
+    } catch(err) {
+      btn.classList.remove('loading'); btn.disabled = false;
+      showAlert('register', getFirebaseError(err.code));
+    }
+  }
+
+  // ===== رسائل خطأ Firebase =====
+  function getFirebaseError(code) {
+    const map = {
+      'auth/user-not-found':         'البريد الإلكتروني غير مسجّل',
+      'auth/wrong-password':         'كلمة المرور غير صحيحة',
+      'auth/invalid-credential':     'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+      'auth/email-already-in-use':   'هذا البريد الإلكتروني مسجّل مسبقاً',
+      'auth/weak-password':          'كلمة المرور ضعيفة — 6 أحرف على الأقل',
+      'auth/invalid-email':          'البريد الإلكتروني غير صالح',
+      'auth/too-many-requests':      'محاولات كثيرة — حاول مرة أخرى لاحقاً',
+      'auth/network-request-failed': 'خطأ في الاتصال — تحقق من الإنترنت',
+    };
+    return map[code] || 'حدث خطأ غير متوقع — حاول مرة أخرى';
+  }
+
+  function goToDashboard() {
+    window.location.replace('index.html');
+  }
+
+  // ===== نسيت كلمة المرور =====
+  async function showForgot() {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email || !validateEmail(email)) {
+      showAlert('login', 'أدخل بريدك الإلكتروني أولاً ثم اضغط "نسيت كلمة المرور"', 'info');
+      return;
+    }
+    try {
+      await auth.sendPasswordResetEmail(email);
+      showAlert('login', `تم إرسال رابط الاسترداد إلى ${email} — تحقق من بريدك`, 'info');
+    } catch(err) {
+      showAlert('login', getFirebaseError(err.code));
+    }
+  }
+
+  // ===== الإشعارات =====
+  function showAlert(form, msg, type = 'danger') {
+    const el  = document.getElementById(form + '-alert');
+    const txt = document.getElementById(form + '-alert-msg');
+    if (!el || !txt) return;
+    el.className = 'alert alert-' + (type === 'info' ? 'success' : type) + ' show';
+    txt.textContent = msg;
+  }
+
+  function clearAlerts() {
+    document.querySelectorAll('.alert').forEach(a => a.classList.remove('show'));
+    document.querySelectorAll('.field-error').forEach(e => e.classList.remove('show'));
+    document.querySelectorAll('.form-input').forEach(i => i.classList.remove('error'));
+  }
+
+  // مسح الخطأ عند الكتابة
+  document.querySelectorAll('.form-input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      inp.classList.remove('error');
+      const errId = inp.id + '-err';
+      const err = document.getElementById(errId);
+      if (err) err.classList.remove('show');
+    });
+  });
+
+
+</script>
+</body>
+</html>

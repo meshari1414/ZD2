@@ -4,6 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>نظام إدارة المالية - زد</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+  // تهيئة Firebase
+  firebase.initializeApp({
+    apiKey:            "AIzaSyAlojOcGBX0GdzIYtK7CMkWIPXFOQzxu-Q",
+    authDomain:        "zd2-finance.firebaseapp.com",
+    projectId:         "zd2-finance",
+    storageBucket:     "zd2-finance.firebasestorage.app",
+    messagingSenderId: "182310499307",
+    appId:             "1:182310499307:web:61ab9f2f24229b5220dfae"
+  });
+
+  // شاشة التحميل — تظهر فوراً قبل التحقق من الجلسة
+  (function showAuthLoader() {
+    const el = document.createElement('div');
+    el.id = 'auth-loader';
+    el.style.cssText = [
+      'position:fixed','inset:0','background:#f0f4ff',
+      'display:flex','flex-direction:column','align-items:center','justify-content:center',
+      'z-index:99999','font-family:Segoe UI,Tahoma,Arial,sans-serif'
+    ].join(';');
+    el.innerHTML = `
+      <div style="width:56px;height:56px;border-radius:14px;background:#1e2a3a;
+                  display:flex;align-items:center;justify-content:center;margin-bottom:16px;
+                  box-shadow:0 8px 24px rgba(30,42,58,.25)">
+        <img src="img/ZD.png" style="width:100%;height:100%;object-fit:contain;border-radius:14px"
+             onerror="this.style.display='none';this.parentElement.innerHTML='<span style=&quot;font-size:24px;font-weight:900;color:#fff&quot;>زد</span>'">
+      </div>
+      <div style="font-size:15px;font-weight:600;color:#1a56db;margin-bottom:8px">جاري التحقق من الجلسة...</div>
+      <div style="width:40px;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden">
+        <div style="height:100%;background:#1a56db;border-radius:2px;
+                    animation:ldbar 1.2s ease-in-out infinite"></div>
+      </div>
+      <style>@keyframes ldbar{0%{width:0;transform:translateX(0)}50%{width:100%}100%{width:0;transform:translateX(100%)}}</style>`;
+    document.documentElement.appendChild(el);
+  })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
@@ -789,6 +829,18 @@
     <div class="nav-item" onclick="showPage('settings')">
       <span class="nav-icon">⚙️</span> الإعدادات
     </div>
+    <div style="padding:10px 12px 4px;border-top:1px solid rgba(255,255,255,0.08);margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 4px 10px;">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1a56db,#1e429f);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>
+        <div style="overflow:hidden;">
+          <div id="sidebar-user-name" style="font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;"></div>
+          <div id="sidebar-user-email" style="font-size:11px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;"></div>
+        </div>
+      </div>
+      <div class="nav-item" onclick="logout()" style="color:#f87171;margin-bottom:0;">
+        <span class="nav-icon">🚪</span> تسجيل الخروج
+      </div>
+    </div>
   </div>
 </aside>
 
@@ -1347,10 +1399,6 @@ function loadData() {
   applyRecurring();
 }
 
-function saveData() {
-  localStorage.setItem('finance_db', JSON.stringify(db));
-}
-
 function refreshAll() {
   renderDashboard();
   renderTransactions();
@@ -1359,6 +1407,7 @@ function refreshAll() {
   renderReports();
 
   renderStorageStats();
+  if (typeof loadUserInfo === 'function') loadUserInfo();
 }
 
 // ===== NAVIGATION =====
@@ -1494,7 +1543,9 @@ function renderBarChart(y, m) {
   }
   const incomes  = days.map(day => db.transactions.filter(t=>t.date===day&&t.type==='income').reduce((s,t)=>s+ +t.amount,0));
   const expenses = days.map(day => db.transactions.filter(t=>t.date===day&&t.type==='expense').reduce((s,t)=>s+ +t.amount,0));
-  const ctx = document.getElementById('barChart').getContext('2d');
+  const barEl = document.getElementById('barChart');
+  if (!barEl) return;
+  const ctx = barEl.getContext('2d');
   CHARTS['bar'] = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1529,7 +1580,9 @@ function renderPieChart(monthTx) {
   });
   const entries = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,7);
   if (!entries.length) return;
-  const ctx = document.getElementById('pieChart').getContext('2d');
+  const pieEl = document.getElementById('pieChart');
+  if (!pieEl) return;
+  const ctx = pieEl.getContext('2d');
   CHARTS['pie'] = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -2739,10 +2792,84 @@ function seedDemo() {
   saveData();
 }
 
+// ===== FIREBASE AUTH + FIRESTORE =====
+const _auth = firebase.auth();
+const _db   = firebase.firestore();
+
+function loadUserInfo() {
+  const user = _auth.currentUser;
+  if (!user) return;
+  const nameEl  = document.getElementById('sidebar-user-name');
+  const emailEl = document.getElementById('sidebar-user-email');
+  if (nameEl)  nameEl.textContent = user.displayName || user.email?.split('@')[0] || 'المستخدم';
+  if (emailEl) emailEl.textContent = user.email || '';
+}
+
+async function syncToFirestore() {
+  const user = _auth.currentUser;
+  if (!user) return;
+  try {
+    await _db.collection('users').doc(user.uid).set({
+      transactions: db.transactions,
+      categories:   db.categories,
+      projects:     db.projects,
+      settings:     db.settings,
+      updatedAt:    firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { console.warn('Firestore sync failed:', e); }
+}
+
+async function loadFromFirestore(user) {
+  try {
+    const snap = await _db.collection('users').doc(user.uid).get();
+    if (snap.exists) {
+      const data = snap.data();
+      if (data.transactions) db.transactions = data.transactions;
+      if (data.categories)   db.categories   = data.categories;
+      if (data.projects)     db.projects     = data.projects;
+      if (data.settings)     db.settings     = { ...db.settings, ...data.settings };
+      localStorage.setItem('finance_db', JSON.stringify(db));
+    } else {
+      seedDemo();
+      syncToFirestore();
+    }
+  } catch(e) {
+    console.warn('Firestore load failed — using local cache:', e);
+  }
+}
+
+function saveData() {
+  localStorage.setItem('finance_db', JSON.stringify(db));
+  syncToFirestore();
+}
+
+async function logout() {
+  await _auth.signOut();
+  localStorage.removeItem('finance_db');
+  window.location.replace('login.html');
+}
+
 // ===== BOOT =====
-init();
-seedDemo();
-refreshAll();
+try { init(); } catch(e) { console.warn('boot init:', e); }
+try { refreshAll(); } catch(e) { console.warn('boot refreshAll:', e); }
+
+// حماية الصفحة عبر Firebase Auth
+_auth.onAuthStateChanged(async (user) => {
+  const loader = document.getElementById('auth-loader');
+  if (!user) {
+    window.location.replace('login.html');
+    return;
+  }
+  try {
+    await loadFromFirestore(user);
+    try { refreshAll(); } catch(e) { console.warn('refreshAll error:', e); }
+    try { loadUserInfo(); } catch(e) { console.warn('loadUserInfo error:', e); }
+  } catch(e) {
+    console.warn('Auth boot error:', e);
+  } finally {
+    if (loader) loader.remove();
+  }
+});
 </script>
 </body>
 </html>
